@@ -1,6 +1,6 @@
 # Table Scanner
   
-  - Mobile application for digitalizing your handwritten/printed images of tables, by converting the image into a csv file readable by programs as excel.
+  - Mobile application for digitizing your handwritten/printed images of tables, by converting the image into a csv file readable by programs as excel.
   - Example:  (include a sample input/output images)
     
 
@@ -15,7 +15,7 @@
 
 #### 1. Mobile Application
   - An Android application that enables you to capture an image of a handwritten/printed table, applies the appropriate image processing techniques before segmenting the table cells and then sends it to a server.
-  - We designed an intuitive UI/UX to make the digitalizing process easier for the users.
+  - We designed an intuitive UI/UX to make the digitizing process easier for the users.
   - On the server an OCR model is used to extract the text in each field in the table.
   - The application then saves the recognised texts into a .CSV file which can be previewed using an app like: Excel or google sheets.
   
