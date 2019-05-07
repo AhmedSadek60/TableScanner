@@ -4,10 +4,15 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.RequiresApi;
+import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -15,11 +20,15 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 import android.widget.VideoView;
 
 import com.androidnetworking.AndroidNetworking;
@@ -33,6 +42,7 @@ import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -44,7 +54,16 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Objects;
+
+import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
 
 import static android.widget.Toast.LENGTH_SHORT;
 
@@ -83,7 +102,13 @@ public class MainActivity extends AppCompatActivity {
     int rowsNo,colNo;
     EditText fileNameEdit;
     String fileName;
-
+    String CurrentFilePath;
+    EditText textView;
+    String image;
+    CircularProgressButton circularProgressButton;
+    String parentPath;
+    ArrayList<String> rowDataArray = new ArrayList<>();
+    String ocrChoice="printed";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
             // will close the app if the device doesn't have camera
             finish();
         }
+
        // fileNameEdit= (EditText) findViewById(R.id.fileName);
         txtDescription = findViewById(R.id.txt_desc);
         imgPreview = findViewById(R.id.imgPreview);
@@ -109,127 +135,160 @@ public class MainActivity extends AppCompatActivity {
         btnCapturePicture = findViewById(R.id.btnCapturePicture);
         btnRecordVideo = findViewById(R.id.btnRecordVideo);
 
+        final AlertDialog.Builder mBuilder = new AlertDialog.Builder(MainActivity.this);
+        final View mView = getLayoutInflater().inflate(R.layout.wait_activity, null);
+        circularProgressButton = (CircularProgressButton)mView.findViewById(R.id.btndown);
+
+        final AlertDialog[] dialog = {mBuilder.create()};
+        // v.setVisibility(View.GONE);
+
         /**
          * Capture image on button click
          */
+
         btnCapturePicture.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
                 if (CameraUtils.checkPermissions(getApplicationContext())) {
                     captureImage();
+
                 } else {
                     requestCameraPermission(MEDIA_TYPE_IMAGE);
                 }
             }
         });
 
-        /**
-         * Record video on button click
-         */
-
-       /*
-         btnRecordVideo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (CameraUtils.checkPermissions(getApplicationContext())) {
-
-                    captureVideo();
-                } else {
-                    requestCameraPermission(MEDIA_TYPE_VIDEO);
-               }
-            }
-        });
-        */
-
         // restoring storage image path from saved instance state
         // otherwise the path will be null on device rotation
         restoreFromBundle(savedInstanceState);
 
+
         btnRecordVideo = findViewById(R.id.convert);
         btnRecordVideo.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(final View v) {
                 if(flag==1){
-                    // fileName = fileNameEdit.getText().toString();
                     fileName = "firstCSV";
-                    // sourceFile = new File(imageStoragePath);
-                    //post with image
-                    AndroidNetworking.upload("http://cb4b8199.ngrok.io/upload/")
-                            //.addMultipartFile("image",sourceFile)
+                    AndroidNetworking.upload("https://tablescanner.herokuapp.com/upload/")
+                    //AndroidNetworking.upload(" http://8371c9d3.ngrok.io/upload/")
                             .addMultipartParameter("data", encodedImage)
+                            .addMultipartParameter("ocr", ocrChoice)
                             .setTag("uploadTest")
                             .setPriority(Priority.HIGH)
                             .build()
                             .setUploadProgressListener(new UploadProgressListener() {
+                                @RequiresApi(api = Build.VERSION_CODES.KITKAT)
                                 @Override
                                 public void onProgress(long bytesUploaded, long totalBytes) {
                                     // do anything with progress
-
+                                    mBuilder.setView(mView);
+                                    dialog[0] = mBuilder.create();
+                                    dialog[0].getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
+                                    //dialog[0].show();
                                 }
                             })
                             .getAsJSONObject(new JSONObjectRequestListener() {
+                                @RequiresApi(api = Build.VERSION_CODES.O)
                                 @Override
                                 public void onResponse(JSONObject response) {
-                                   // createFolder("TableScanner");
-                                    save();
+                                    // save();
                                     // do anything with response
+                                    imgPreview.setVisibility(View.GONE);
+                                    txtDescription.setVisibility(View.VISIBLE);
                                     Log.i(TAG, "onResponse: "+response.toString());
-                                    Toast.makeText(getApplicationContext(),"Posted",LENGTH_SHORT).show();
+                                    //Toast.makeText(getApplicationContext(),"Posted",LENGTH_SHORT).show();
                                     try {
                                          rowsNo = response.getInt("rows");
                                          colNo = response.getInt("columns");
                                         Log.i(TAG, "onResponse: rows="+rowsNo+ " columns="+colNo);
+                                        JSONArray rows = response.getJSONArray("rowsdata");
+                                        for(int counter=0; counter<rows.length();counter++){
+                                            String rowData="";
+                                            JSONObject oneRow = rows.getJSONObject(counter);
+                                            for(int iter=0;iter<colNo;iter++){
+                                                int index=iter+1;
+                                                String data = oneRow.getString("col"+index);
+                                                rowData=rowData+data+",";
+                                                Log.i(TAG, "field: "+data);
+
+                                            }
+                                            rowDataArray.add(rowData+" "+"\n");
+                                            Log.i(TAG, "row: "+rowData);
+                                            rowData="";
+                                        }
+                                        rows=new JSONArray();
                                     } catch (JSONException e) {
                                         e.printStackTrace();
                                     }
+                                    if(colNo !=0 && rowsNo !=0) {
+                                        File csvFile = null;
+                                        BufferedWriter bw=null;
+                                        try {
+                                            csvFile = createFile();
+                                        } catch (IOException ex) {
+                                        }
+                                        Log.i(TAG, "Entered: Here");
+                                        String totalContent="";
+                                        for(int x=0;x<rowsNo;x++) {
+                                            String content = rowDataArray.get(x);
+                                            totalContent=totalContent+" "+content;
+                                            Log.i(TAG, "Content"+content);
+                                            Log.i(TAG, "totalContent"+totalContent);
+                                            content="";
+                                        }
 
-                                    if(colNo !=0 && rowsNo !=0){
-
-                                       /* try {
-                                            String content = "ahmed ; ali ; 3 ; 4";
-                                            File file = new File("/data/data/com.android.tablescanner/"+fileName +".csv");
-                                            // if file doesnt exists, then create it
-                                            if (!file.exists()) {
-                                                file.createNewFile();
-                                            }
-
-                                            FileWriter fw = new FileWriter(file.getAbsoluteFile());
-                                            BufferedWriter bw = new BufferedWriter(fw);
-                                            bw.write(content);
-                                            bw.close();
+                                        FileWriter fw = null;
+                                        try {
+                                            fw = new FileWriter(csvFile.getAbsoluteFile());
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                            Log.i(TAG, "onResponse: writeFile error =" + e.toString());
+                                        }
+                                        bw = new BufferedWriter(fw);
+                                        fw=null;
+                                        try {
+                                            bw.write(totalContent);
+                                            totalContent="";
 
                                         } catch (IOException e) {
                                             e.printStackTrace();
-                                        }*/
-
-
+                                            Log.i(TAG, "onResponse: bufferFile error =" + e.toString());
+                                        }
                                         try {
-                                            FileOutputStream fileOut=openFileOutput("FileName.csv", MODE_APPEND); // you can directly give file name as FileName.csv
-                                            OutputStreamWriter outputWriter=new OutputStreamWriter(fileOut);
-                                            outputWriter.write(getOrderText("string from edittext", "string from edittext", "string from edittext"));
-                                            outputWriter.write("\n");
-                                            outputWriter.close();
-                                            Log.i(TAG, "onResponse: Done!");
-
-                                        } catch (Exception e) {
+                                            bw.close();
+                                            bw=null;
+                                        } catch (IOException e) {
                                             e.printStackTrace();
+                                            Log.i(TAG, "onResponse: closeFile error =" + e.toString());
                                         }
-                                        for(int i=0;i<rowsNo;i++){
+                                        flag=0;
 
-                                        }
+                                        Intent i = new Intent(getApplicationContext(),FilesActivity.class);
+                                        i.putExtra("path",parentPath);
+                                        startActivity(i);
                                     }
                                     else {
                                         Toast.makeText(getApplicationContext(),"No data inside the table!",LENGTH_SHORT).show();
                                     }
+                                    response=null;
                                 }
                                 @Override
                                 public void onError(ANError error) {
+                                  //  Toast.makeText(MainActivity.this,"Download done",Toast.LENGTH_SHORT).show();
+                                    circularProgressButton.doneLoadingAnimation(Color.parseColor("#333639"), BitmapFactory.decodeResource(getResources(),R.drawable.ic_done_white_48dp));
+                                    circularProgressButton.startAnimation();
+                                    dialog[0].dismiss();
                                     // handle error
                                     Log.i(TAG, "onError: "+error.toString());
+                                    if(error.toString().contains("java.net.UnknownHostException: Unable to resolve host")){
+                                        Toast.makeText(getApplicationContext(),"Please check your internet connection!",LENGTH_SHORT).show();
+                                    }
+                                    else if(error.toString().contains("com.androidnetworking.error.ANError")){
+                                        Toast.makeText(getApplicationContext(),"Sorry! Server is not running now.",LENGTH_SHORT).show();
+                                    }
                                 }
                             });
-                    flag=0;
                 }
                 else {
                     Toast.makeText(getApplicationContext(),"Please choose image first!",LENGTH_SHORT).show();
@@ -239,6 +298,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public void showDialog(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(message).setPositiveButton("Printed", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+               ocrChoice="printed";
+            }
+        }).setNegativeButton("Handwritten", new DialogInterface.OnClickListener() {
+
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                ocrChoice="handwritten";
+            }
+        }).show();
+    }
+
     public void save (){
         FileOutputStream fos = null;
 
@@ -246,8 +321,6 @@ public class MainActivity extends AppCompatActivity {
             fos = openFileOutput(fileName, MODE_PRIVATE);
             fos.write(getOrderText("string from edittext", "string from edittext", "string from edittext").getBytes());
             fos.write("\n".getBytes());
-            //fos.write(text.getBytes());
-
             Toast.makeText(this, "Saved to " + getFilesDir() + "/" + fileName, Toast.LENGTH_LONG).show();
             Log.i(TAG, "save: "+"Saved to " + getFilesDir() + "/" + fileName);
         } catch (FileNotFoundException e) {
@@ -264,29 +337,23 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    public void createFolder(String fname){
-        //File folder = getFilesDir();
-        //File folder = new File("/data/data/com.android.tablescanner/");
-        File folder = new File(getApplicationContext().getFilesDir().getPath());
-        File f= new File(folder, fname);
-        f.mkdir();
-        //String myfolder= Environment.get()+"/"+fname;
-        //File f=new File(myfolder);
 
-        File mydir = getApplicationContext().getDir(fname, MODE_PRIVATE); //Creating an internal dir;
-        File fileWithinMyDir = new File(mydir, fileName); //Getting a file within the dir.
-        if(!f.exists())
-            if(!f.mkdir()){
-                Toast.makeText(this, fname+" can't be created.", Toast.LENGTH_SHORT).show();
+    private File createFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "TableScanner_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".csv",         /* suffix */
+                storageDir      /* directory */
+        );
 
-            }
-            else
-                Toast.makeText(this, fname+" can be created.", Toast.LENGTH_SHORT).show();
-        else
-            Toast.makeText(this, fname+" already exits.", Toast.LENGTH_SHORT).show();
+        // Save a file: path for use with ACTION_VIEW intents
+        CurrentFilePath = image.getAbsolutePath();
+         parentPath=image.getParent();
+        return image;
     }
-
-
 
     private String getOrderText(String aa, String bb, String cc){
 
@@ -354,16 +421,12 @@ public class MainActivity extends AppCompatActivity {
      */
     private void captureImage() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
         File file = CameraUtils.getOutputMediaFile(MEDIA_TYPE_IMAGE);
         if (file != null) {
             imageStoragePath = file.getAbsolutePath();
         }
-
         Uri fileUri = CameraUtils.getOutputMediaFileUri(getApplicationContext(), file);
-
         intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
-
         // start the image capture Intent
         startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
     }
@@ -411,6 +474,20 @@ public class MainActivity extends AppCompatActivity {
 
         // start the video capture Intent
         startActivityForResult(intent, CAMERA_CAPTURE_VIDEO_REQUEST_CODE);
+    }
+
+    public static String ConvertBitmapToString(Bitmap bitmap){
+        String encodedImage = "";
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+        try {
+            encodedImage= URLEncoder.encode(Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.DEFAULT), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        return encodedImage;
     }
 
     /**
@@ -478,11 +555,13 @@ public class MainActivity extends AppCompatActivity {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, bytes);
             byte[] b = bytes.toByteArray();
-            Log.e("Activity", "Pick from Camera::>>> ");
             encodedImage = Base64.encodeToString(b, Base64.DEFAULT);
+
             Log.i(TAG, "previewCapturedImage: encodedImage:"+encodedImage);
+            Log.i(TAG, "previewCapturedImage: h="+bitmap.getHeight()+" w="+bitmap.getWidth());
             //TODO: give bitmap to python
             flag=1;
+            showDialog("Is the text handwritten or printed ?");
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
@@ -526,3 +605,5 @@ public class MainActivity extends AppCompatActivity {
                 }).show();
     }
 }
+
+

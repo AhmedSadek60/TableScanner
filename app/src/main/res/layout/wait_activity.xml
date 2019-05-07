@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+
+    <ToggleButton
+        android:id="@+id/switch1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"/>
+
+    <br.com.simplepass.loading_button_lib.customViews.CircularProgressButton
+        android:id="@+id/btndown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shape_default"
+        app:spinning_bar_color="#FFF"
+        app:spinning_bar_padding="6dp"
+        app:spinning_bar_width="4dp"
+        android:gravity="center"
+        android:layout_gravity="center"/>
+
+</LinearLayout>

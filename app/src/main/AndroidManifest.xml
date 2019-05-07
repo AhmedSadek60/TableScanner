@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="info.androidhive.androidcamera">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -18,26 +20,28 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity
-            android:name=".MainActivity"
-            android:label="@string/app_name"
-            android:theme="@style/AppTheme.NoActionBar">
+        <activity android:name=".Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity" android:theme="@style/AppTheme.NoActionBar"/>
+        <activity android:name=".FilesActivity" android:theme="@style/AppTheme.NoActionBar" />
 
         <provider
             android:name="android.support.v4.content.FileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
-            android:grantUriPermissions="true">
+            android:grantUriPermissions="true"
+            tools:replace="android:authorities">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
+                android:resource="@xml/file_paths"
+                tools:replace="android:resource"/>
         </provider>
+
     </application>
 
 </manifest>
