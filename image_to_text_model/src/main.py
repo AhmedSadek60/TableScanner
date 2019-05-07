@@ -24,6 +24,11 @@ class FilePaths:
 
 
 def get_filename_ind(template_file_name):
+	"""
+		helper function to get the first digit number in a filename.
+		used to rename the images in the 'fnInfer' dir to sort the segmented table cells
+		to maintain the order of the cells.
+	"""
 	for c in template_file_name:
 		if (c >= '0' and c <= '9'):
 			filename_ind = template_file_name.index(c)
@@ -113,30 +118,27 @@ def infer(model, fnImg):
 
 def infer_multi(model, input_dir, clean_segmented_images = True):
 	"""
-		recognise test in images provided by the path 'input_dir'
+		recognises the text in the test images provided by the path 'input_dir'.
+		returns a list of the recognised text.
 	"""
 	output = []
 	# run word-segmentation on images in 'data/input' dir
 	num_words_per_img = segment()
 
+	# read the images from 'input_dir', and sort them according to their order in the table:
 	imgs_paths = [ str(input_dir) + '/' + img for img in os.listdir(input_dir) ]
-
+	# get the image number
 	ind = get_filename_ind(imgs_paths[0])
-
 	imgs_ind = [ int(img_path[ind:-4]) for img_path in imgs_paths ]
-
+	# sort the images according to their number
 	imgs_path = [ path for i, path in sorted(zip(imgs_ind, imgs_paths)) ]
 
-	# imgs = [ preprocess_camera_input(cv2.imread(img, cv2.IMREAD_GRAYSCALE), Model.imgSize) for img in imgs_paths ]
-
+	# preprocess the images
 	imgs = []
 	for i in range(len(imgs_path)):
 		imgs.append( preprocess_camera_input(cv2.imread(imgs_path[i], cv2.IMREAD_GRAYSCALE), Model.imgSize) )
 
-	# for img in imgs:
-	# 	cv2.imshow('sad', img)
-	# 	cv2.waitKey()
-
+	# perform inference on the images
 	batch = Batch(None, imgs)
 	(recognized, probability) = model.inferBatch(batch, True)
 
@@ -145,6 +147,7 @@ def infer_multi(model, input_dir, clean_segmented_images = True):
 		for img in imgs_paths:
 			os.remove(img)
 
+	# save the recognised text into a list
 	i = 0
 	for j in num_words_per_img:
 		one_sentence = ''
@@ -155,7 +158,6 @@ def infer_multi(model, input_dir, clean_segmented_images = True):
 			i += 1
 		# print('Recognized:', '"' + recognized[i] + '"')
 		# print('Probability:', probability[i])
-		# print()
 		output.append(one_sentence)
 
 	return output

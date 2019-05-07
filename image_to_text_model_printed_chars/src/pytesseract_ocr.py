@@ -21,7 +21,7 @@ def preprocess_camera_input(img, imgSize):
 	# thresholding
 	img = cv2.adaptiveThreshold(img.astype('uint8'), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 41 , 20)
 
-
+	# resize the image (while keeping the aspect ratio), then pad it.
 	img_h, img_w = img.shape
 	w, h = (512, 128)
 	new_w = int(img_w * min(w/img_w, h/img_h))
@@ -31,11 +31,6 @@ def preprocess_camera_input(img, imgSize):
 	canvas = np.full( (h, w), np.mean(img), dtype = img.dtype )
 	canvas[ (h-new_h) // 2 : (h-new_h) // 2 + new_h, (w-new_w) // 2 : (w-new_w) // 2 + new_w] = resized_img
 	target = canvas
-
-
-	#cv2.imshow('img', target)
-	#cv2.waitKey()
-
 
 	return img
 

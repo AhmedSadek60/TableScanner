@@ -54,27 +54,9 @@ def preprocess_camera_input(img, imgSize, dataAugmentation=False):
 	pxmax = np.max(img)
 	img = (img - pxmin) / (pxmax - pxmin) * 255
 
+	# apply binary thresholding:
 	# img = cv2.adaptiveThreshold(img.astype('uint8'), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21 , 25)
 	img = cv2.adaptiveThreshold(img.astype('uint8'), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 41 , 20)
-
-	# increase line width
-	# kernel = np.ones((3, 3), np.uint8)
-	# img = cv2.erode(img, kernel, iterations = 1)
-
-
-	# cv2.imshow('img', img)
-	# cv2.waitKey()
-
-
-	# img_h, img_w = img.shape
-	# w, h = (512, 128)
-	# new_w = int(img_w * min(w/img_w, h/img_h))
-	# new_h = int(img_h * min(w/img_w, h/img_h))
-	# resized_img = cv2.resize(img, (new_w, new_h))
-	# img = resized_img
-	# canvas = np.full( (h, w), np.mean(img), dtype = img.dtype )
-	# canvas[ (h-new_h) // 2 : (h-new_h) // 2 + new_h, (w-new_w) // 2 : (w-new_w) // 2 + new_w] = resized_img
-	# target = canvas
 
 
 	# increase dataset size by applying random stretches to the images
@@ -93,11 +75,6 @@ def preprocess_camera_input(img, imgSize, dataAugmentation=False):
 	img = cv2.resize(img, newSize)
 	target = np.ones([ht, wt]) * 255
 	target[0:newSize[1], 0:newSize[0]] = img
-
-
-
-	# cv2.imshow('img', img)
-	# cv2.waitKey()
 
 
 	# transpose for TF
